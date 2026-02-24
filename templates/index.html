@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MISSION: TO-DO LIST</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    
+    <style>
+        /* FONDO ESTILO VIDEOJUEGO */
+        body {
+            background: radial-gradient(circle, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e94560; /* Rojo Neón */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Courier New', Courier, monospace; /* Fuente estilo terminal/misión */
+            text-transform: uppercase;
+        }
+
+        .task-container {
+            width: 100%;
+            max-width: 550px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 40px;
+            border: 2px solid #e94560;
+            border-radius: 5px;
+            box-shadow: 0 0 20px rgba(233, 69, 96, 0.5), inset 0 0 10px rgba(233, 69, 96, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* EFECTO DE ESCANEO (SCANLINE) */
+        .task-container::before {
+            content: " ";
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+        }
+
+        h2 {
+            letter-spacing: 5px;
+            text-shadow: 2px 2px 0px #000;
+            border-bottom: 2px solid #e94560;
+            padding-bottom: 10px;
+        }
+
+        .form-control {
+            background: transparent;
+            border: 1px solid #e94560;
+            color: #fff;
+            border-radius: 0;
+        }
+
+        .form-control:focus {
+            background: rgba(233, 69, 96, 0.1);
+            color: #fff;
+            box-shadow: 0 0 10px #e94560;
+            border-color: #e94560;
+        }
+
+        .btn-primary { background-color: #e94560; border: none; border-radius: 0; font-weight: bold; }
+        .btn-primary:hover { background-color: #c62a48; box-shadow: 0 0 15px #e94560; }
+
+        /* ESTILO PARA TAREAS */
+        .list-group-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(233, 69, 96, 0.3);
+            color: #fff;
+            margin-bottom: 10px;
+            border-radius: 0 !important;
+        }
+
+        .completed-text {
+            color: #53354a !important;
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
+        /* BOTONES DE FILTRO ESTILO HUD */
+        .btn-hud {
+            border: 1px solid #e94560;
+            color: #e94560;
+            background: transparent;
+            font-size: 0.8rem;
+            padding: 5px 15px;
+            text-decoration: none;
+        }
+
+        .btn-hud.active {
+            background: #e94560;
+            color: #fff;
+        }
+
+        .btn-hud:hover {
+            background: rgba(233, 69, 96, 0.2);
+            color: #e94560;
+        }
+    </style>
+</head>
+<body>
+
+<div class="task-container animate__animated animate__zoomIn">
+    <h2 class="text-center mb-4 fw-bold">CURRENT OBJECTIVES</h2>
+
+    <form action="/add" method="POST" class="input-group mb-4">
+        <input type="text" name="content" class="form-control" placeholder="ADQUIRIR NUEVO OBJETIVO..." required>
+        <button type="submit" class="btn btn-primary px-4">ACEPTAR</button>
+    </form>
+
+    <div class="d-flex justify-content-center gap-2 mb-4">
+        <a href="/?filter=all" class="btn-hud {{ 'active' if filter == 'all' }}">TODOS</a>
+        <a href="/?filter=pending" class="btn-hud {{ 'active' if filter == 'pending' }}">EN CURSO</a>
+        <a href="/?filter=completed" class="btn-hud {{ 'active' if filter == 'completed' }}">LOGRADOS</a>
+    </div>
+
+    <ul class="list-group">
+        {% for task in tasks %}
+        <li class="list-group-item d-flex justify-content-between align-items-center animate__animated animate__fadeInLeft">
+            <div class="d-flex align-items-center flex-grow-1">
+                <input type="checkbox" class="form-check-input me-3" 
+                       {% if task.completed %}checked{% endif %} 
+                       onchange="window.location.href='/complete/{{task.id}}'">
+
+                <span id="label-{{task.id}}" class="{{ 'completed-text' if task.completed else '' }}">
+                    >> {{ task.content }}
+                </span>
+
+                <form id="edit-form-{{task.id}}" action="/edit/{{task.id}}" method="POST" class="d-none w-100">
+                    <div class="input-group">
+                        <input type="text" name="content" class="form-control form-control-sm" value="{{task.content}}">
+                        <button type="submit" class="btn btn-success btn-sm">UPDATE</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="actions-{{task.id}}" class="ms-2">
+                <button onclick="toggleEdit('{{task.id}}')" class="btn btn-sm text-info bg-transparent border-0">EDIT</button>
+                <a href="/delete/{{task.id}}" class="btn btn-sm text-danger text-decoration-none">ABORT</a>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+
+<script>
+    function toggleEdit(id) {
+        document.getElementById('label-' + id).classList.add('d-none');
+        document.getElementById('actions-' + id).classList.add('d-none');
+        const form = document.getElementById('edit-form-' + id);
+        form.classList.remove('d-none');
+    }
+</script>
+
+</body>
+</html>
